@@ -3,7 +3,6 @@ _W = display.contentWidth;
 _H = display.contentHeight;
 
 collision = require('collide')
-granny = require('granny')
 
 local bgbg = display.newRect(_W/2, _H/2, _W, _H);
 bgbg:setFillColor(0.5)
@@ -17,8 +16,10 @@ game.size_of_map = 2000
 local hero = display.newGroup();
 hero.x, hero.y = _W/2, _H/2;
 hero.ang = 360;
+-----------------------------------------------------------
 hero.W = 97.5
 hero.H = 86.25
+-----------------------------------------------------------
 local body = display.newCircle(hero, 0, 0, 30);
 body.alpha = 0;
 local laser = display.newLine(hero, 0, 0, 0, -200)
@@ -45,7 +46,7 @@ else
 	for i=1, n do
 		x1, y1, x2, y2 = file:read( "*n" ), file:read( "*n" ), file:read( "*n" ), file:read( "*n" )
 		
-		local wall = display.newRect(walls, x1+_W/2-350, y1+_H/2-350, x2-x1 , y2-y1);
+		local wall = display.newRect(walls, x1+_W/2-game.size_of_map/2, y1+_H/2-game.size_of_map/2, x2-x1 , y2-y1);
 		wall.x = wall.x + wall.width/2
 		wall.y = wall.y + wall.height/2
 		wall.alpha = 0.7;
@@ -90,19 +91,21 @@ local function onKeyEvent(event)
 end
 
 
+granny = require('granny')
+
 local gr1 = granny.spawn(_W/2 + 100, _H/2 + 100, game)
+local gr2 = granny.spawn(_W/2 - 100, _H/2 + 100, game)
 
 Runtime:addEventListener("key", onKeyEvent )
 Runtime:addEventListener('enterFrame', function()
-
-
+	
+	
 	local is_collide_x = false;
 	local is_collide_y = false;
 	game.x = game.x + game.vx;
 	for i=1,#walls_tb do
 		if(collision.isCollidingWall(hero, walls_tb[i], game))then
 			is_collide_x = true
-			print("X")
 		end
 	end
 	game.x = game.x - game.vx;
@@ -111,7 +114,6 @@ Runtime:addEventListener('enterFrame', function()
 	for i=1,#walls_tb do
 		if(collision.isCollidingWall(hero, walls_tb[i], game))then
 			is_collide_y = true
-			print("Y")
 		end
 	end
 	game.y = game.y - game.vy;

@@ -10,7 +10,7 @@ function granny.spawn(x, y, game)
 	body.alpha = 0.3
 	local face = display.newImage(gr, 'img/angry_granny.png')
 	return gr
-
+	
 end
 
 return granny;

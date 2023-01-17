@@ -6,7 +6,7 @@ function collision.isCollidingWall(hero, wall, game)
 	local wy1 = wall.y - wall.height/2 - _H/2 + game.size_of_map/2;
 	local wx2 = wx1 + wall.width;
 	local wy2 = wy1 + wall.height;
-	local hx1 = game.size_of_map/2 - game.x - hero.W/2;
+	local hx1 = game.size_of_map/2 - game.x - hero.W/2; 
 	local hy1 = game.size_of_map/2 - game.y - hero.H/2;
 	local hx2 = hx1 + hero.W;
 	local hy2 = hy1 + hero.H;

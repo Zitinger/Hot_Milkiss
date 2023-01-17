@@ -1,8 +1,68 @@
 
+collision = require('collide')
+
+local Unit = {}
+function Unit:new(x, y, game, class)
+
+	local obj = {}
+		obj.x = x
+		obj.y = y
+		obj.dx = 0
+		obj.dy = 0
+		obj.img = img
+		obj.class = class
+		obj.phase = 0
+		obj.ang = 360
+		
+	function obj:spawn()
+		obj.unit = display.newGroup()
+		obj.unit.x = obj.x
+		obj.unit.y = obj.y
+		obj.unit.body = display.newCircle(obj.unit, 0, 0, 35)
+		obj.unit.body.alpha = 0.3
+		obj.unit.face = display.newImage(obj.unit, 'img/'..obj.phase..'_'..obj.class..'.png')
+		game:insert(obj.unit)
+	end
+	
+	function obj:changePhase(phase)
+		obj.phase = phase
+		print('img/'..obj.phase..'_'..obj.class..'.png')
+		obj.unit.face = display.newImage(obj.unit, 'img/'..obj.phase..'_'..obj.class..'.png')
+	end
+	
+	function obj:move(hero_x, hero_y)
+		
+		ux = game.size_of_map/2 + obj.dx
+		uy = game.size_of_map/2 - obj.y + obj.dy
+		
+		if obj.phase == 0 then
+			print(hero_x, hero_y, ux, uy)
+			dx = obj.unit.x - hero_x;
+			dy = -obj.unit.y + hero_y;
+			local angle = math.atan2(dx, dy) * 180 / math.pi;
+			obj.unit:rotate(360 - obj.ang);
+			obj.ang = angle;
+			obj.unit:rotate(obj.ang);
+			
+			
+		end
+		if obj.phase == 1 then
+			
+			
+			
+			
+		end
+	end
+	
+	setmetatable(obj, self)
+    self.__index = self; return obj
+
+end
+
+ 
 _W = display.contentWidth;
 _H = display.contentHeight;
 
-collision = require('collide')
 
 local bgbg = display.newRect(_W/2, _H/2, _W, _H);
 bgbg:setFillColor(0.5)
@@ -10,29 +70,39 @@ bgbg:setFillColor(0.5)
 local game = display.newGroup();
 game.vx, game.vy = 0, 0; 
 
-local bg = display.newImage(game, 'img/map2.png', _W/2, _H/2);
-game.size_of_map = 2000
+local bg = display.newImage(game, 'img/mainmap.png', _W/2, _H/2);
+game.size_of_map = 8000
 
 local hero = display.newGroup();
 hero.x, hero.y = _W/2, _H/2;
 hero.ang = 360;
+
 -----------------------------------------------------------
 hero.W = 97.5
 hero.H = 86.25
 -----------------------------------------------------------
+
 local body = display.newCircle(hero, 0, 0, 30);
 body.alpha = 0;
 local laser = display.newLine(hero, 0, 0, 0, -200)
-laser.strokeWidth = 20
+laser.strokeWidth = 60
 laser.alpha = 0
-local face = display.newImage(hero, 'img/main.png', 0, 0)
-face:scale(3.75,3.75)
+local face = display.newImage(hero, 'img/mainch.png', 0, 0)
+-- face:scale(3.75,3.75)
+game.hero_velocity = 5
 
 local walls = display.newGroup()
 game:insert(walls)
 local walls_tb = {}
 
-game.hero_velocity = 5
+
+
+
+local gr1 = Unit:new(_W/2 + 100, _H/2, game, 'granny')
+gr1.spawn()
+-- gr1:changePhase(1)
+
+
 
 local path = system.pathForFile( "img/first.txt")
 local file, errorString = io.open( path, "r" )
@@ -49,7 +119,7 @@ else
 		local wall = display.newRect(walls, x1+_W/2-game.size_of_map/2, y1+_H/2-game.size_of_map/2, x2-x1 , y2-y1);
 		wall.x = wall.x + wall.width/2
 		wall.y = wall.y + wall.height/2
-		wall.alpha = 0.7;
+		wall.alpha = 0.3;
 		table.insert(walls_tb, wall);
 		
 		print(x1, y1, x2, y2)
@@ -87,19 +157,15 @@ local function onKeyEvent(event)
 		game.vx = game.vx - game.hero_velocity;
 	end
 	
+	if (event.keyName == 'p' and event.phase == 'down'  ) then
+		gr1:changePhase(1)
+	end
+	
+	
     return false
 end
 
-
-granny = require('granny')
-
-local gr1 = granny.spawn(_W/2 + 100, _H/2 + 100, game)
-local gr2 = granny.spawn(_W/2 - 100, _H/2 + 100, game)
-
-Runtime:addEventListener("key", onKeyEvent )
-Runtime:addEventListener('enterFrame', function()
-	
-	
+function hero:move()
 	local is_collide_x = false;
 	local is_collide_y = false;
 	game.x = game.x + game.vx;
@@ -131,6 +197,13 @@ Runtime:addEventListener('enterFrame', function()
 	
 	game.x = game.x + game.vx
 	game.y = game.y + game.vy
+end
+
+Runtime:addEventListener("key", onKeyEvent )
+Runtime:addEventListener('enterFrame', function()
+	
+	hero:move()
+	gr1:move(game.size_of_map/2 - game.x, game.size_of_map/2 - game.y)
 	
 end)
 
@@ -157,6 +230,5 @@ local function onMouseEvent( event )
 		laser.alpha = 0
 	end
 end
-                              
--- Add the mouse event listener.
+
 Runtime:addEventListener("mouse", onMouseEvent)

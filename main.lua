@@ -4,7 +4,7 @@ collision = require('collide')
 _W = display.contentWidth;
 _H = display.contentHeight;
 
--- TODO: game over src (unit collision); laser collision; unit phase 1 movement
+-- TODO: game over src (unit collision); laser collision
 
 local Unit = {}
 function Unit:new(x, y, game, velocity, units_table, class)
@@ -25,6 +25,7 @@ function Unit:new(x, y, game, velocity, units_table, class)
 		obj.ang = 360
 		
 	function obj:spawn()
+		-- print(obj.velocity)
 		obj.unit = display.newGroup()
 		obj.unit.x = obj.x
 		obj.unit.y = obj.y
@@ -35,7 +36,8 @@ function Unit:new(x, y, game, velocity, units_table, class)
 	end
 	
 	function obj:kill()
-		
+		game:remove_from_tb_by_item(obj.tb, obj)
+		obj.unit:removeSelf()
 	end
 	
 	function obj:changePhase(phase)
@@ -45,53 +47,63 @@ function Unit:new(x, y, game, velocity, units_table, class)
 	end
 	
 	function obj:move()
-
-		ux = obj.spawn_x + obj.xx
-		uy = obj.spawn_y + obj.yy
-		if obj.phase == 0 then
-			tx = obj.game.size_of_map/2 - game.x
-			ty = obj.game.size_of_map/2 - game.y
-		end
-		if obj.phase == 1 then
-			tx = obj.spawn_x
-			ty = obj.spawn_y
-		end
-		
-		
-		local dx = -ux + tx
-		local dy = uy - ty
-		
-		local angle = math.atan2(dx, dy) * 180 / math.pi;
-		obj.unit:rotate(360 - obj.ang);
-		obj.ang = angle;
-		obj.unit:rotate(obj.ang);
-		
-		dx, dy = tx - ux, ty - uy
-		local vx, vy
-		
-		if dx*dx >= dy*dy then
-			vx = obj.velocity * (dx / math.abs(dx))
-			vy = obj.velocity * (dy / math.abs(dy)) * (math.abs(dy) / math.abs(dx))
-		else
-			vy = obj.velocity * (dy / math.abs(dy))
-			vx = obj.velocity * (dx / math.abs(dx)) * (math.abs(dx) / math.abs(dy))
-		end
-		
-		if dx == 0 then
-			vx = 0
-		end
-		if dy == 0 then
-			vy = 0
-		end
-		
-		-- print(vx, vy)
-		
-		obj.unit.x = obj.unit.x + vx
-		obj.unit.y = obj.unit.y + vy
-		obj.xx = obj.xx + vx
-		obj.yy = obj.yy + vy
-		
-		
+		if not game.is_paused then
+			ux = obj.spawn_x + obj.xx
+			uy = obj.spawn_y + obj.yy
+			if obj.phase == 0 then
+				tx = obj.game.size_of_map/2 - game.x
+				ty = obj.game.size_of_map/2 - game.y
+			end
+			if obj.phase == 1 then
+				tx = obj.spawn_x
+				ty = obj.spawn_y
+			end
+			
+			
+			local dx = -ux + tx
+			local dy = uy - ty
+			
+			local angle = math.atan2(dx, dy) * 180 / math.pi;
+			obj.unit:rotate(360 - obj.ang);
+			obj.ang = angle;
+			obj.unit:rotate(obj.ang);
+			
+			dx, dy = tx - ux, ty - uy
+			local vx, vy
+			
+			if dx*dx >= dy*dy then
+				vx = obj.velocity * (dx / math.abs(dx))
+				vy = obj.velocity * (dy / math.abs(dy)) * (math.abs(dy) / math.abs(dx))
+			else
+				vy = obj.velocity * (dy / math.abs(dy))
+				vx = obj.velocity * (dx / math.abs(dx)) * (math.abs(dx) / math.abs(dy))
+			end
+			
+			if dx == 0 then
+				vx = 0
+			end
+			if dy == 0 then
+				vy = 0
+			end
+			
+			-- print(vx, vy)
+			
+			obj.unit.x = obj.unit.x + vx
+			obj.unit.y = obj.unit.y + vy
+			obj.xx = obj.xx + vx
+			obj.yy = obj.yy + vy
+			
+			
+			if obj.phase == 1 and math.abs(tx - ux) < 3 and math.abs(ty - uy) < 3 then
+				obj:kill()
+			end
+			if obj.phase == 0 and math.sqrt(dx*dx + dy*dy) <= game.unitR then 
+				print('game over')
+				obj.game:gameOver()
+			end
+			
+			
+		end		
 	end
 	
 	setmetatable(obj, self)
@@ -113,8 +125,9 @@ hero.x, hero.y = _W/2, _H/2;
 hero.ang = 360;
 
 -----------------------------------------------------------
-hero.W = 97.5
-hero.H = 86.25
+hero.W, game.unitW = 97.5, 97.5
+hero.H, game.unitH = 86.25, 86.25
+game.unitR = 90
 -----------------------------------------------------------
 
 local body = display.newCircle(hero, 0, 0, 30);
@@ -123,7 +136,7 @@ local laser = display.newLine(hero, 0, 0, 0, -200)
 laser.strokeWidth = 60
 laser.alpha = 0
 local face = display.newImage(hero, 'img/mainch.png', 0, 0)
--- face:scale(3.75,3.75)
+-- face:scale(3.75, 3.75)
 game.hero_velocity = 5
 
 local walls = display.newGroup()
@@ -132,18 +145,18 @@ local walls_tb = {}
 
 
 game.grannys_tb = {}
+function game:test_spawn()
+	local gr1 = Unit:new(_W/2, _H/2 + 300, game, math.random(1, 3), game.grannys_tb, 'granny')
+	gr1.spawn()
+	local gr2 = Unit:new(_W/2, _H/2 - 300, game, math.random(1, 3), game.grannys_tb, 'granny')
+	gr2.spawn()
 
-local gr1 = Unit:new(_W/2, _H/2 + 100, game, math.random(1, 3), game.grannys_tb, 'granny')
-gr1.spawn()
-local gr2 = Unit:new(_W/2, _H/2 - 100, game, math.random(1, 3), game.grannys_tb, 'granny')
-gr2.spawn()
+	table.insert(game.grannys_tb, gr1)
+	table.insert(game.grannys_tb, gr2)
+end
+game:test_spawn()
 
-
--- gr1:changePhase(1)
-
-
-
-local path = system.pathForFile( "img/first.txt")
+local path = system.pathForFile("img/first.txt")
 local file, errorString = io.open( path, "r" )
  
 if not file then
@@ -162,18 +175,21 @@ else
 		table.insert(walls_tb, wall);
 		
 		print(x1, y1, x2, y2)
-		-- table.insert(walls, {x1, y1, x2, y2})
     end
-	-- local c = display.newCircle(_W/2-350, _H/2-350)
     io.close( file )
 end
 file = nil
 
+
+local d_down, w_down, s_down, a_down = false, false, false, false
 game.is_paused = false
+
 function game:pause()
 	game.vx, game.vy = 0, 0;
+	laser.alpha = 0
 	game.hero_velocity = 0
 	game.is_paused = true
+	d_down, w_down, s_down, a_down = false, false, false, false
 end
 
 function game:resume()
@@ -181,47 +197,112 @@ function game:resume()
 	game.is_paused = false
 end
 
+function game:gameOver()
+	game:pause()
+	local gameover = display.newGroup()
+	local bg = display.newRect(gameover, _W/2, _H/2, _W*2, _H*2)
+	bg:setFillColor(0)
+	bg.alpha = 0.2
+	local tab = display.newImage(gameover, 'img/bg.png', _W/2, _H/2)
+	bg:addEventListener('tap', function()
+		gameover:removeSelf()
+		game:resume()
+		game:restart()
+	end)
+end
+
+function game:restart()
+	for i=#game.grannys_tb, 1, -1 do
+		game.grannys_tb[i]:kill()
+	end
+	game.x, game.y, game.vx, game.vy = 0, 0, 0, 0
+	game:test_spawn()
+end
+
+function game:remove_from_tb_by_item(tb, item)
+	for i=#tb, 1, -1 do
+		if tb[i] == item then
+			print(item, tb[i])
+			table.remove(tb, i)
+		end
+	end
+end
 
 
 local function onKeyEvent(event)
-	
-	if (event.keyName == 'd' and event.phase == 'down'  ) then
-		game.vx = game.vx - game.hero_velocity;
-	end
-	if (event.keyName == 'd' and event.phase == 'up'  ) then
-		game.vx = game.vx + game.hero_velocity;
-	end
-	if (event.keyName == 'w' and event.phase == 'down'  ) then
-		game.vy = game.vy + game.hero_velocity;
-	end
-	if (event.keyName == 'w' and event.phase == 'up'  ) then
-		game.vy = game.vy - game.hero_velocity;
-	end
-	if (event.keyName == 's' and event.phase == 'down'  ) then
-		game.vy = game.vy - game.hero_velocity;
-	end
-	if (event.keyName == 's' and event.phase == 'up'  ) then
-		game.vy = game.vy + game.hero_velocity;
-	end
-	if (event.keyName == 'a' and event.phase == 'down'  ) then
-		game.vx = game.vx + game.hero_velocity;
-	end
-	if (event.keyName == 'a' and event.phase == 'up'  ) then
-		game.vx = game.vx - game.hero_velocity;
+	if not game.is_paused then 
+		if (event.keyName == 'd' and event.phase == 'down' and not d_down ) then
+			game.vx = game.vx - game.hero_velocity;
+			d_down = true;
+		end
+		if (event.keyName == 'd' and event.phase == 'up' and d_down ) then
+			game.vx = game.vx + game.hero_velocity;
+			d_down = false;
+		end
+		if (event.keyName == 'w' and event.phase == 'down' and not w_down ) then
+			game.vy = game.vy + game.hero_velocity;
+			w_down = true;
+		end
+		if (event.keyName == 'w' and event.phase == 'up' and w_down ) then
+			game.vy = game.vy - game.hero_velocity;
+			w_down = false;
+		end
+		if (event.keyName == 's' and event.phase == 'down' and not s_down ) then
+			game.vy = game.vy - game.hero_velocity;
+			s_down = true;
+		end
+		if (event.keyName == 's' and event.phase == 'up' and s_down ) then
+			game.vy = game.vy + game.hero_velocity;
+			s_down = false;
+		end
+		if (event.keyName == 'a' and event.phase == 'down' and not a_down ) then
+			game.vx = game.vx + game.hero_velocity;
+			a_down = true;
+		end
+		if (event.keyName == 'a' and event.phase == 'up' and a_down ) then
+			game.vx = game.vx - game.hero_velocity;
+			a_down = false;
+		end
 	end
 	
 	if (event.keyName == 'p' and event.phase == 'down'  ) then
-		gr1:changePhase(1)
+		for i=1,#game.grannys_tb do
+			unit = game.grannys_tb[i]
+			unit:changePhase(1)
+		end
 		-- game:pause()
 	end
 	if (event.keyName == 'r' and event.phase == 'down'  ) then
-		gr1:changePhase(0)
+		for i=1,#game.grannys_tb do
+			unit = game.grannys_tb[i]
+			unit:changePhase(0)
+		end
 		-- game:resume()
+	end
+	
+	if (event.keyName == 'n' and event.phase == 'down'  ) then
+		if game.is_paused then
+			game:resume()
+		else
+			game:pause()
+		end
+	end
+	if (event.keyName == 'k' and event.phase == 'down'  ) then
+		print(#game.grannys_tb)
+		if #game.grannys_tb ~= 0 then
+			game.grannys_tb[1]:kill()
+		end
+	end
+	if (event.keyName == 'l' and event.phase == 'down'  ) then
+		local gr = Unit:new(_W/2 + math.random(-200, 200), _H/2 + math.random(-500, 500), game, math.random() * 2 + 1, game.grannys_tb, 'granny')
+		gr.spawn()
+		table.insert(game.grannys_tb, gr)
 	end
 	
 	
     return false
 end
+
 
 function hero:move()
 	local is_collide_x = false;
@@ -261,8 +342,9 @@ Runtime:addEventListener("key", onKeyEvent )
 Runtime:addEventListener('enterFrame', function()
 	
 	hero:move()
-	gr1:move()
-	gr2:move()
+	for i=#game.grannys_tb, 1, -1 do
+		game.grannys_tb[i]:move()
+	end
 	-- gr1:move(hero.x, hero.y)
 	
 end)

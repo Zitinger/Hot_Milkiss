@@ -4,7 +4,7 @@ collision = require('collide')
 _W = display.contentWidth;
 _H = display.contentHeight;
 
--- TODO: game over src (unit collision); laser collision
+-- TODO: laser collision
 
 local Unit = {}
 function Unit:new(x, y, game, velocity, units_table, class)
@@ -46,10 +46,20 @@ function Unit:new(x, y, game, velocity, units_table, class)
 		obj.unit.face = display.newImage(obj.unit, 'img/'..obj.phase..'_'..obj.class..'.png')
 	end
 	
+	function obj:getCurrentX()
+		return obj.spawn_x + obj.xx
+	end
+	function obj:getCurrentY()
+		return obj.spawn_y + obj.yy
+	end
+	function obj:getPhase()
+		return obj.phase
+	end
+	
 	function obj:move()
 		if not game.is_paused then
-			ux = obj.spawn_x + obj.xx
-			uy = obj.spawn_y + obj.yy
+			local ux = obj.spawn_x + obj.xx
+			local uy = obj.spawn_y + obj.yy
 			if obj.phase == 0 then
 				tx = obj.game.size_of_map/2 - game.x
 				ty = obj.game.size_of_map/2 - game.y
@@ -106,6 +116,24 @@ function Unit:new(x, y, game, velocity, units_table, class)
 		end		
 	end
 	
+	function obj:show_task()
+		game:pause()
+		local task = display.newGroup()
+		
+		local TEMP_TASK_BG = display.newRoundedRect(task, _W/2, _H/2, 500, 200, 30)
+		local dtxt = display.newText(task, 'Win', _W/2, _H/2, nil, 70)
+		dtxt:setTextColor(0)
+		
+		local function win()
+			task:removeSelf()
+			obj:changePhase(1)
+			game:resume()
+		end
+		
+		TEMP_TASK_BG:addEventListener('tap', win)
+		
+	end
+	
 	setmetatable(obj, self)
     self.__index = self; return obj
 
@@ -115,7 +143,7 @@ local bgbg = display.newRect(_W/2, _H/2, _W, _H);
 bgbg:setFillColor(0.5)
 
 local game = display.newGroup();
-game.vx, game.vy = 0, 0; 
+game.vx, game.vy = 0, 0;
 
 local bg = display.newImage(game, 'img/mainmap.png', _W/2, _H/2);
 game.size_of_map = 8000
@@ -132,11 +160,13 @@ game.unitR = 90
 
 local body = display.newCircle(hero, 0, 0, 30);
 body.alpha = 0;
-local laser = display.newLine(hero, 0, 0, 0, -200)
-laser.strokeWidth = 60
+local laser = display.newRect(hero, 0, 0, 70, 300)
+laser.y = -laser.height/2
+
 laser.alpha = 0
 local face = display.newImage(hero, 'img/mainch.png', 0, 0)
 -- face:scale(3.75, 3.75)
+face.alpha=0
 game.hero_velocity = 5
 
 local walls = display.newGroup()
@@ -154,14 +184,14 @@ function game:test_spawn()
 	table.insert(game.grannys_tb, gr1)
 	table.insert(game.grannys_tb, gr2)
 end
-game:test_spawn()
+-- game:test_spawn()
 
 local path = system.pathForFile("img/first.txt")
 local file, errorString = io.open( path, "r" )
  
-if not file then
+if file then
     -- Error occurred; output the cause
-    print( "File error: " .. errorString )
+    print( "File error: ")
 else
     -- Read data from file
 	local n = file:read( "*n" )
@@ -302,6 +332,7 @@ local function onKeyEvent(event)
 	
     return false
 end
+Runtime:addEventListener("key", onKeyEvent )
 
 
 function hero:move()
@@ -338,15 +369,39 @@ function hero:move()
 	game.y = game.y + game.vy
 end
 
-Runtime:addEventListener("key", onKeyEvent )
-Runtime:addEventListener('enterFrame', function()
-	
-	hero:move()
-	for i=#game.grannys_tb, 1, -1 do
-		game.grannys_tb[i]:move()
+function game:check_laser_collision()
+	local min_gr;
+	local min_dist = 99999999;
+	collision.isCollidingLaser(Unit:new(_W/2 + math.random(-200, 200), _H/2 + math.random(-500, 500), game, math.random() * 2 + 1, game.grannys_tb, 'granny'), game, hero, laser)
+	for i=1,#game.grannys_tb do
+		gr = game.grannys_tb[i]
+		if collision.isCollidingLaser(gr, game, hero, laser) and gr:getPhase() == 0 then
+			local ux, uy, hx, hy = gr:getCurrentX(), gr:getCurrentY(), game.size_of_map/2 - game.x, game.size_of_map/2 - game.y;
+			dd = math.sqrt((hx-ux)*(hx-ux) + (hy-uy)*(hy-uy))
+			if dd < min_dist then
+				min_gr = gr
+				min_dist = dd 
+			end
+		end
 	end
-	-- gr1:move(hero.x, hero.y)
-	
+	return min_gr
+end
+
+Runtime:addEventListener('enterFrame', function()
+	if not game.is_paused then
+		hero:move()
+		for i=#game.grannys_tb, 1, -1 do
+			game.grannys_tb[i]:move()
+			-- print(collision.isCollidingLaser(game.grannys_tb[i], game, hero, laser))
+		end
+		
+		if laser.alpha ~= 0 then
+			laser_gr = game:check_laser_collision()
+			if laser_gr ~= nil then
+				laser_gr:show_task()
+			end
+		end
+	end
 end)
 
 local function onMouseEvent( event )

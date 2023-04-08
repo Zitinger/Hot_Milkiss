@@ -3,6 +3,7 @@ collision = require('collide')
 
 _W = display.contentWidth;
 _H = display.contentHeight;
+local face = display.newGroup()
 
 -- TODO: laser collision
 
@@ -54,6 +55,9 @@ function Unit:new(x, y, game, velocity, units_table, class)
 	end
 	function obj:getPhase()
 		return obj.phase
+	end
+	function obj:activateRage()
+		obj.velocity = 11
 	end
 	
 	function obj:move()
@@ -118,25 +122,86 @@ function Unit:new(x, y, game, velocity, units_table, class)
 	
 	function obj:show_task()
 		game:pause()
-		local task = display.newGroup()
 		
-		local TEMP_TASK_BG = display.newRoundedRect(task, _W/2, _H/2, 1600, 1000, 30)
+		local task = display.newGroup()
+		obj.task = true
+		
+		local task_bg = display.newImage(task, 'img/backgrex.png', _W/2, _H/2)
+		-- local task_bg = display.newImage(task, 'img/ebox.png', _W/2, _H/2, 1600, 1000, 30)
 		local ex = game:generate_exercise(game.difficulty)
 		local code_num, true_res = ex[1], ex[2]
-		local dtxt = display.newText(task, code_num, _W/2, _H/2, nil, 70)
+		local dtxt = display.newText(task, code_num, _W/2, _H/2, game.mainFont, 70)
 		dtxt:setTextColor(0)
 		
 		local end_time = system.getTimer() + game.time_to_task
-		local time_left = end_time - system.getTimer()
-		local timertxt = display.newText(task, time_left, _W/2, _H/2 + 100, nil, 50)
+		local time_left = math.ceil((end_time - system.getTimer()) / 1000)
+		local timertxt = display.newText(task, time_left, _W/2, _H/2 + 100, game.mainFont, 50)
+		timertxt:setTextColor(0)
+		
+		local input = native.newTextField(_W/2, _H/2 + 250, 300, 50)
+		input.inputType = "number"
+		task:insert(input)
+		
+		
+		local donebtn = display.newImage(task, 'img/done_btn.png', _W/2, _H/2 + 400)
 		
 		local function win()
 			task:removeSelf()
 			obj:changePhase(1)
+			obj.task = false
 			game:resume()
 		end
+		local function lose()
+			task:removeSelf()
+			obj:activateRage()
+			obj.task = false
+			
+			local wrongtxt = display.newText('WRONG', _W/2, _H/2, game.mainFont, 200)
+			wrongtxt:setTextColor(1, 0, 0)
+			wrongtxt.alpha = 0
+			transition.to(wrongtxt, {time = 500, alpha=1, transition=easing.inQuad})
+			transition.to(wrongtxt, {time = 500, delay = 500, alpha=0, transition=easing.inQuad, onComplete=function()
+				game:resume()
+			end})
+		end
 		
-		TEMP_TASK_BG:addEventListener('tap', win)
+		local function solve()
+			solution = input.text
+			print(solution, true_res)
+			if solution == tostring(true_res) then
+				win()
+			else
+				lose()
+			end
+		end
+		
+		input:addEventListener('userInput', function(e)
+			if e.phase == "submitted" then
+				solve()
+			end
+		end)
+		donebtn:addEventListener('tap', function()
+			solve()
+		end)
+		
+		-- local systemFonts = native.getFontNames()
+		-- for i, fontName in ipairs( systemFonts ) do
+			-- print( "Font Name = " .. tostring( fontName ) )
+		-- end
+		
+		
+		Runtime:addEventListener('enterFrame', function()
+			if obj.task then
+				time_left = end_time - system.getTimer()
+				local curr_t = math.ceil(time_left / 1000)
+				if curr_t <= 0 then
+					lose(task)
+				end
+				timertxt.text = curr_t
+			end
+		end)
+		
+		
 		
 	end
 	
@@ -163,7 +228,8 @@ hero.W, game.unitW = 97.5, 97.5
 hero.H, game.unitH = 86.25, 86.25
 game.unitR = 90
 game.difficulty = 2
-game.time_to_task = 20
+game.time_to_task = 20000
+game.mainFont = 'Comic Sans MS'
 -----------------------------------------------------------
 
 local body = display.newCircle(hero, 0, 0, 30);
@@ -312,7 +378,6 @@ function game:ten_to_another(num, base)
         num = math.floor(num / base)
 	end
 	
-	print(old_num, base, result)
     return result
 end
 
@@ -491,7 +556,6 @@ Runtime:addEventListener('enterFrame', function()
 			laser_off()
 		end
 		
-		print(system.getTimer())
 	end
 end)
 

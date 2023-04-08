@@ -120,9 +120,15 @@ function Unit:new(x, y, game, velocity, units_table, class)
 		game:pause()
 		local task = display.newGroup()
 		
-		local TEMP_TASK_BG = display.newRoundedRect(task, _W/2, _H/2, 500, 200, 30)
-		local dtxt = display.newText(task, 'Win', _W/2, _H/2, nil, 70)
+		local TEMP_TASK_BG = display.newRoundedRect(task, _W/2, _H/2, 1600, 1000, 30)
+		local ex = game:generate_exercise(game.difficulty)
+		local code_num, true_res = ex[1], ex[2]
+		local dtxt = display.newText(task, code_num, _W/2, _H/2, nil, 70)
 		dtxt:setTextColor(0)
+		
+		local end_time = system.getTimer() + game.time_to_task
+		local time_left = end_time - system.getTimer()
+		local timertxt = display.newText(task, time_left, _W/2, _H/2 + 100, nil, 50)
 		
 		local function win()
 			task:removeSelf()
@@ -156,6 +162,8 @@ hero.ang = 360;
 hero.W, game.unitW = 97.5, 97.5
 hero.H, game.unitH = 86.25, 86.25
 game.unitR = 90
+game.difficulty = 2
+game.time_to_task = 20
 -----------------------------------------------------------
 
 local body = display.newCircle(hero, 0, 0, 30);
@@ -166,7 +174,6 @@ laser.y = -laser.height/2
 laser.alpha = 0
 local face = display.newImage(hero, 'img/mainch.png', 0, 0)
 -- face:scale(3.75, 3.75)
-face.alpha=0
 game.hero_velocity = 5
 
 local walls = display.newGroup()
@@ -175,23 +182,29 @@ local walls_tb = {}
 
 
 game.grannys_tb = {}
-function game:test_spawn()
-	local gr1 = Unit:new(_W/2, _H/2 + 300, game, math.random(1, 3), game.grannys_tb, 'granny')
+function game:test_spawn1()
+	local gr1 = Unit:new(_W/2, _H/2 + 300, game, math.random() * 2 + 1, game.grannys_tb, 'granny')
 	gr1.spawn()
-	local gr2 = Unit:new(_W/2, _H/2 - 300, game, math.random(1, 3), game.grannys_tb, 'granny')
+	local gr2 = Unit:new(_W/2, _H/2 - 300, game, math.random() * 2 + 1, game.grannys_tb, 'granny')
 	gr2.spawn()
 
 	table.insert(game.grannys_tb, gr1)
 	table.insert(game.grannys_tb, gr2)
 end
--- game:test_spawn()
+function game:test_spawn2()
+	local gr1 = Unit:new(_W/2, _H/2 + 300, game, 0, game.grannys_tb, 'granny')
+	gr1.spawn()
+	table.insert(game.grannys_tb, gr1)
+end
+game:test_spawn1()
+-- game:test_spawn2()
 
 local path = system.pathForFile("img/first.txt")
 local file, errorString = io.open( path, "r" )
  
-if file then
+if not file then
     -- Error occurred; output the cause
-    print( "File error: ")
+    print( "File error: "..errorString)
 else
     -- Read data from file
 	local n = file:read( "*n" )
@@ -225,6 +238,7 @@ end
 function game:resume()
 	game.hero_velocity = 5
 	game.is_paused = false
+	game.is_laser_on = false
 end
 
 function game:gameOver()
@@ -246,7 +260,8 @@ function game:restart()
 		game.grannys_tb[i]:kill()
 	end
 	game.x, game.y, game.vx, game.vy = 0, 0, 0, 0
-	game:test_spawn()
+	game:test_spawn1()
+	game.is_laser_on = false
 end
 
 function game:remove_from_tb_by_item(tb, item)
@@ -258,6 +273,75 @@ function game:remove_from_tb_by_item(tb, item)
 	end
 end
 
+function game:generate_exercise(difficulty, base)
+	base = base or 2
+	
+	local function get_borders()
+		if difficulty == 1 then -- 2-4 number of characters (знаков в числе)
+			min_val = base
+			max_val = base ^ 3 + base ^ 2 + base + 1
+		elseif difficulty == 2 then -- 3-5 number of characters (знаков в числе)
+			min_val = base ^ 2
+			max_val = base ^ 4 + base ^ 3 + base ^ 2 + base + 1
+		elseif difficulty == 3 then -- 4-6 number of characters (знаков в числе)
+			min_val = base ^ 3
+			max_val = base ^ 5 + base ^ 4 + base ^ 3 + base ^ 2 + base + 1
+		else
+			print('error: wrong difficulty')
+			return 0
+		end
+		return {min_val, max_val}
+	end
+	
+	local min_n, max_n = get_borders()[1], get_borders()[2]
+	local n = math.round(math.random() * (max_n - min_n) + min_n)
+	local code_n = game:ten_to_another(n, base)
+	
+	return {code_n, n}
+end
+
+function game:ten_to_another(num, base)
+	base = base or 2
+	local old_num = num
+	
+    digits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'}
+	
+    local result = ''
+    while num > 0 do
+        result = digits[num % base + 1]..result
+        num = math.floor(num / base)
+	end
+	
+	print(old_num, base, result)
+    return result
+end
+
+function game:another_to_ten(num, base)
+	base = base or 2
+	num = tonumber(tostring(num), base)
+	return num
+end
+
+function laser_on()
+	if laser.alpha < 0.5 then
+		laser.alpha = laser.alpha + 0.035
+	elseif laser.alpha >= 0.5 and laser.alpha < 0.9 then
+		laser.alpha = 0.95
+	elseif laser.alpha >= 0.94 and laser.alpha < 1 then
+		laser.alpha = laser.alpha + 0.01
+	end
+	-- print(laser.alpha..' on')
+end
+function laser_off()
+	if laser.alpha > 0.9 then
+		laser.alpha = laser.alpha - 0.01
+	elseif laser.alpha <= 0.9 and laser.alpha > 0.5 then
+		laser.alpha = 0.5
+	elseif laser.alpha <= 0.5 and laser.alpha > 0 then
+		laser.alpha = laser.alpha - 0.05
+	end
+	-- print(laser.alpha..' off')
+end
 
 local function onKeyEvent(event)
 	if not game.is_paused then 
@@ -372,7 +456,6 @@ end
 function game:check_laser_collision()
 	local min_gr;
 	local min_dist = 99999999;
-	collision.isCollidingLaser(Unit:new(_W/2 + math.random(-200, 200), _H/2 + math.random(-500, 500), game, math.random() * 2 + 1, game.grannys_tb, 'granny'), game, hero, laser)
 	for i=1,#game.grannys_tb do
 		gr = game.grannys_tb[i]
 		if collision.isCollidingLaser(gr, game, hero, laser) and gr:getPhase() == 0 then
@@ -387,25 +470,34 @@ function game:check_laser_collision()
 	return min_gr
 end
 
+game.is_laser_on = false
 Runtime:addEventListener('enterFrame', function()
 	if not game.is_paused then
 		hero:move()
 		for i=#game.grannys_tb, 1, -1 do
 			game.grannys_tb[i]:move()
-			-- print(collision.isCollidingLaser(game.grannys_tb[i], game, hero, laser))
 		end
 		
-		if laser.alpha ~= 0 then
+		if laser.alpha == 1 then
 			laser_gr = game:check_laser_collision()
 			if laser_gr ~= nil then
 				laser_gr:show_task()
 			end
 		end
+		
+		if game.is_laser_on then
+			laser_on()
+		else
+			laser_off()
+		end
+		
+		print(system.getTimer())
 	end
 end)
 
 local function onMouseEvent( event )
 	if not game.is_paused then
+	
 		dx = -hero.x + event.x;
 		dy = hero.y - event.y;
 		local angle = math.atan2(dx, dy) * 180 / math.pi;
@@ -415,17 +507,19 @@ local function onMouseEvent( event )
 	
 		local vx = game.vx
 		local vy = game.vy
+		
 		if event.type == 'down' then
 			if vx == 5 then game.vx = 2 elseif vx == -5 then game.vx = -2 else game.vx = 0 end
 			if vy == 5 then game.vy = 2 elseif vy == -5 then game.vy = -2 else game.vy = 0 end
 			game.hero_velocity = 2
-			laser.alpha = 1
+			game.is_laser_on = true
 		end
 		if event.type == 'up' then
 			if vx == 2 then game.vx = 5 elseif vx == -2 then game.vx = -5 else game.vx = 0 end
 			if vy == 2 then game.vy = 5 elseif vy == -2 then game.vy = -5 else game.vy = 0 end
 			game.hero_velocity = 5
-			laser.alpha = 0
+			laser_off()
+			game.is_laser_on = false
 		end
 	end
 end

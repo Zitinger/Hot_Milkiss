@@ -5,6 +5,16 @@
 
 settings =
 {
+    window =
+    {		
+		titleText = {
+            default = "Teacher's Hardship",
+        },
+        defaultViewWidth = 1280,
+        defaultViewHeight = 720,
+        -- suspendWhenMinimized = true,
+    },  
+
 	orientation =
 	{
 		-- Supported values for orientation:
